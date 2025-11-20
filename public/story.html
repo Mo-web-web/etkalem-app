@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>قراءة القصة</title>
+
+<style>
+    body {
+        background: #0b0b16;
+        color: white;
+        font-family: Arial, sans-serif;
+        padding: 0;
+        margin: 0;
+    }
+
+    header {
+        background: #111224;
+        padding: 20px;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        border-bottom: 1px solid #222;
+    }
+
+    .container {
+        max-width: 900px;
+        margin: 30px auto;
+        padding: 20px;
+        background: #16172a;
+        border-radius: 14px;
+        border: 1px solid #222;
+    }
+
+    .meta {
+        opacity: .7;
+        margin-bottom: 20px;
+    }
+
+    .chapter {
+        margin-bottom: 40px;
+        padding-bottom: 25px;
+        border-bottom: 1px solid #333;
+    }
+
+    .chapter h2 {
+        color: #d6cfff;
+        margin-bottom: 10px;
+    }
+
+    .chapter p {
+        line-height: 1.9;
+        white-space: pre-line;
+    }
+</style>
+</head>
+
+<body>
+
+<header id="storyTitle">تحميل...</header>
+
+<div class="container">
+    <p class="meta" id="storyMeta"></p>
+
+    <div id="storyContent"></div>
+</div>
+
+<script>
+async function loadStory() {
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+
+    const res = await fetch("/story/" + id);
+    const story = await res.json();
+
+    // العنوان
+    document.getElementById("storyTitle").innerText = story.title;
+
+    // بيانات الكاتب
+    document.getElementById("storyMeta").innerText =
+        `${story.author} — ${story.date} — قسم: ${story.category}`;
+
+    // الشباتر
+    const box = document.getElementById("storyContent");
+    box.innerHTML = "";
+
+    story.chapters.forEach((ch, i) => {
+        box.innerHTML += `
+            <div class="chapter">
+                <h2>شبتر ${i+1}: ${ch.title}</h2>
+                <p>${ch.text}</p>
+            </div>
+        `;
+    });
+}
+
+loadStory();
+</script>
+
+</body>
+</html>

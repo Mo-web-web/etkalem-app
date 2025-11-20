@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة الأدمن</title>
+
+<style>
+
+    body {
+        background: #0b0b16;
+        color: white;
+        font-family: Arial;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h2, h3 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .box {
+        background: #111224;
+        padding: 20px;
+        border-radius: 16px;
+        margin-bottom: 25px;
+    }
+
+    input, select, textarea {
+        width: 100%;
+        padding: 12px;
+        margin-top: 10px;
+        background: #1a1b2f;
+        border: none;
+        border-radius: 10px;
+        color: white;
+    }
+
+    textarea {
+        height: 150px;
+        resize: vertical;
+    }
+
+    button {
+        width: 100%;
+        padding: 12px;
+        background: #6a3df2;
+        border: none;
+        border-radius: 10px;
+        color: white;
+        margin-top: 12px;
+        font-size: 18px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #522bd9;
+    }
+
+    .chapter-box {
+        background: #1b1c2e;
+        padding: 15px;
+        border-radius: 12px;
+        margin-top: 15px;
+    }
+
+    .story-list {
+        margin-top: 30px;
+    }
+
+    .story-item {
+        display: flex;
+        justify-content: space-between;
+        background: #111224;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 15px;
+    }
+
+    .story-item img {
+        width: 90px;
+        height: 120px;
+        border-radius: 10px;
+        object-fit: cover;
+        background: black;
+    }
+
+    .btn-small {
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin-top: 5px;
+    }
+
+    .danger {
+        background: #d93434;
+    }
+
+    .success {
+        background: #25b66f;
+    }
+
+</style>
+</head>
+
+<body>
+
+<h2>إضافة أو تعديل قصة</h2>
+
+<div class="box">
+
+    <label>صورة الغلاف (رابط أو اختر من الملفات)</label>
+    <input type="file" id="coverFile" onchange="uploadCover()">
+    <input type="text" id="cover" placeholder="رابط الغلاف">
+
+    <label>عنوان القصة</label>
+    <input type="text" id="title">
+
+    <label>اسم الكاتب</label>
+    <input type="text" id="author">
+
+    <label>تاريخ النشر</label>
+    <input type="date" id="date">
+
+    <label>القسم</label>
+    <select id="category">
+        <option value="رعب">رعب</option>
+        <option value="رومانسي">رومانسي</option>
+        <option value="أكشن">أكشن</option>
+        <option value="خيال">خيال</option>
+        <option value="دراما">دراما</option>
+        <option value="عام">عام</option>
+    </select>
+
+</div>
+
+<h3>الفصل الرئيسي والفصول</h3>
+
+<div id="chapters"></div>
+
+<button onclick="addChapter()">إضافة فصل</button>
+<button onclick="saveStory()">حفظ القصة</button>
+
+<h2>قائمة القصص</h2>
+
+<div class="story-list" id="storyList"></div>
+
+<script>
+
+let chapterCount = 0;
+let editId = null;
+
+// رفع صورة الغلاف
+async function uploadCover() {
+    const file = document.getElementById("coverFile").files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const res = await fetch("/upload", { method: "POST", body: formData });
+    const data = await res.json();
+
+    document.getElementById("cover").value = data.url;
+}
+
+// إضافة فصل
+function addChapter(title = "", text = "") {
+    chapterCount++;
+
+    const box = document.createElement("div");
+    box.className = "chapter-box";
+    box.id = "chapter" + chapterCount;
+
+    box.innerHTML = `
+        <h3>فصل ${chapterCount}</h3>
+
+        <label>عنوان الفصل</label>
+        <input type="text" id="chapterTitle${chapterCount}" value="${title}">
+
+        <label>نص الفصل (يدعم إدراج صور باستخدام [img:URL])</label>
+        <textarea id="chapterText${chapterCount}">${text}</textarea>
+
+        <button class="danger" onclick="deleteChapter(${chapterCount})">حذف</button>
+    `;
+
+    document.getElementById("chapters").appendChild(box);
+}
+
+function deleteChapter(id) {
+    document.getElementById("chapter" + id).remove();
+}
+
+// حفظ القصة
+async function saveStory() {
+    const story = {
+        id: editId,
+        cover: document.getElementById("cover").value,
+        title: document.getElementById("title").value,
+        author: document.getElementById("author").value,
+        date: document.getElementById("date").value,
+        category: document.getElementById("category").value,
+        chapters: []
+    };
+
+    for (let i = 1; i <= chapterCount; i++) {
+        const box = document.getElementById("chapter" + i);
+        if (!box) continue;
+
+        story.chapters.push({
+            title: document.getElementById(`chapterTitle${i}`).value,
+            text: document.getElementById(`chapterText${i}`).value
+        });
+    }
+
+    const res = await fetch("/saveStory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(story)
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+        alert("تم الحفظ بنجاح");
+        loadStories();
+        resetForm();
+    }
+}
+
+// reset
+function resetForm() {
+    chapterCount = 0;
+    editId = null;
+
+    document.getElementById("cover").value = "";
+    document.getElementById("title").value = "";
+    document.getElementById("author").value = "";
+    document.getElementById("date").value = "";
+    document.getElementById("category").value = "عام";
+    document.getElementById("chapters").innerHTML = "";
+}
+
+// تحميل القصص
+async function loadStories() {
+    const res = await fetch("/stories");
+    const data = await res.json();
+
+    const list = document.getElementById("storyList");
+    list.innerHTML = "";
+
+    data.forEach(s => {
+        const box = document.createElement("div");
+        box.className = "story-item";
+
+        box.innerHTML = `
+            <div>
+                <strong>${s.title}</strong><br>
+                ${s.author}<br>
+                <small>${s.category}</small>
+            </div>
+
+            <img src="${s.cover}">
+
+            <div>
+                <button class="btn-small success" onclick='editStory(${s.id})'>تعديل</button>
+                <button class="btn-small" onclick='openStory(${s.id})'>فتح</button>
+                <button class="btn-small danger" onclick='deleteStory(${s.id})'>حذف</button>
+            </div>
+        `;
+
+        list.appendChild(box);
+    });
+}
+
+// فتح صفحة القراءة
+function openStory(id) {
+    window.location.href = "story.html?id=" + id;
+}
+
+// تحميل قصة للتعديل
+async function editStory(id) {
+    const res = await fetch("/story/" + id);
+    const data = await res.json();
+    const s = data.story;
+
+    editId = s.id;
+
+    document.getElementById("cover").value = s.cover;
+    document.getElementById("title").value = s.title;
+    document.getElementById("author").value = s.author;
+    document.getElementById("date").value = s.date;
+    document.getElementById("category").value = s.category;
+
+    document.getElementById("chapters").innerHTML = "";
+    chapterCount = 0;
+
+    s.chapters.forEach(c => {
+        addChapter(c.title, c.text);
+    });
+}
+
+// حذف قصة
+async function deleteStory(id) {
+    if (!confirm("هل تريد حذف القصة؟")) return;
+
+    const res = await fetch("/deleteStory/" + id, {
+        method: "DELETE"
+    });
+
+    const data = await res.json();
+    if (data.success) {
+        loadStories();
+    }
+}
+
+loadStories();
+
+</script>
+
+</body>
+</html>
